@@ -266,24 +266,54 @@
         gameContainer.addEventListener('mousemove', onMouseMove);
         gameContainer.addEventListener('click', onMouseClick);
 
-        // Disable double-tap to zoom and pinch-zoom on mobile
+        // Touch support for mobile shooting
+        function onTouchMove(event) {
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                const rect = gameContainer.getBoundingClientRect();
+                mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
+                mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+                event.preventDefault(); // Prevent scrolling
+            }
+        }
+
+        function onTouchEnd(event) {
+            if (event.changedTouches.length === 1) {
+                // Shoot on single touch end (tap)
+                raycaster.setFromCamera(mouse, camera);
+                const direction = new THREE.Vector3();
+                raycaster.ray.direction.normalize();
+                direction.copy(raycaster.ray.direction);
+                createProjectile(direction);
+                event.preventDefault(); // Prevent mouse events from firing
+            }
+        }
+
+        // Add touch event listeners to game container
+        gameContainer.addEventListener('touchmove', onTouchMove, { passive: false });
+        gameContainer.addEventListener('touchend', onTouchEnd, { passive: false });
+
+        // Disable zoom on document level (outside game area)
         (function() {
-          // Prevent double-tap to zoom (quick second tap)
+          // Prevent double-tap to zoom on document (but not on game container)
           let lastTouchEnd = 0;
           document.addEventListener('touchend', function (event) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-              event.preventDefault();
+            // Only prevent double-tap zoom if NOT in game container
+            if (!gameContainer.contains(event.target)) {
+              const now = (new Date()).getTime();
+              if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+              }
+              lastTouchEnd = now;
             }
-            lastTouchEnd = now;
           }, false);
 
-          // Prevent pinch-zoom on iOS
+          // Prevent pinch-zoom on iOS (document level)
           document.addEventListener('gesturestart', function (e) {
             e.preventDefault();
           });
 
-          // Prevent multi-touch default (two-finger) actions on Android / other browsers
+          // Prevent multi-touch zoom gestures (2+ fingers) on document
           document.addEventListener('touchstart', function (e) {
             if (e.touches && e.touches.length > 1) {
               e.preventDefault();
