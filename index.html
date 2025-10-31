@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website in Onderhoud</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header {
+            background: rgba(0,0,0,0.7);
+            color: white;
+            text-align: center;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            position: relative;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin: 0 0 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        p {
+            font-size: 1.1em;
+            margin: 5px 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .instructions {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            margin: 10px auto;
+            max-width: 600px;
+        }
+        .game-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .crosshair::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: white;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚧 Website in Onderhoud 🚧</h1>
+        <p>We werken hard aan vernieuwingen!</p>
+        <div class="instructions">
+            <p><strong>Speel ondertussen dit spelletje:</strong></p>
+            <p>Schiet op de bewegende kubussen voordat ze weggaan!</p>
+            <p>Beweeg met je muis om te richten en klik om te schieten</p>
+        </div>
+    </div>
+    
+    <div class="game-container">
+        <canvas id="canvas"></canvas>
+        <div class="crosshair"></div>
+    </div>
+
+    <script>
+        // Get game container dimensions
+        const gameContainer = document.querySelector('.game-container');
+        const canvas = document.getElementById('canvas');
+        
+        // Three.js setup
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, gameContainer.offsetWidth / gameContainer.offsetHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+        
+        function resizeCanvas() {
+            const rect = gameContainer.getBoundingClientRect();
+            renderer.setSize(rect.width, rect.height);
+            camera.aspect = rect.width / rect.height;
+            camera.updateProjectionMatrix();
+        }
+        
+        resizeCanvas();
+        renderer.setClearColor(0x000000, 0.1);
+
+        // Game objects
+        const cubes = [];
+        const projectiles = [];
+        const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xffa726, 0x66bb6a, 0xab47bc];
+        let score = 0;
+        
+        // Create moving cubes
+        function createCube() {
+            const geometry = new THREE.BoxGeometry(1, 1, 1);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: colors[Math.floor(Math.random() * colors.length)],
+                transparent: true,
+                opacity: 0.8
+            });
+            const cube = new THREE.Mesh(geometry, material);
+            
+            // Start position (random edge of screen)
+            const side = Math.floor(Math.random() * 4);
+            switch(side) {
+                case 0: // Left
+                    cube.position.set(-15, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+                    cube.velocity = new THREE.Vector3(0.1, (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05);
+                    break;
+                case 1: // Right
+                    cube.position.set(15, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+                    cube.velocity = new THREE.Vector3(-0.1, (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05);
+                    break;
+                case 2: // Top
+                    cube.position.set((Math.random() - 0.5) * 20, 8, (Math.random() - 0.5) * 10);
+                    cube.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.05, -0.1, (Math.random() - 0.5) * 0.05);
+                    break;
+                case 3: // Bottom
+                    cube.position.set((Math.random() - 0.5) * 20, -8, (Math.random() - 0.5) * 10);
+                    cube.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.05, 0.1, (Math.random() - 0.5) * 0.05);
+                    break;
+            }
+            
+            cube.rotation.x = Math.random() * Math.PI;
+            cube.rotation.y = Math.random() * Math.PI;
+            cube.rotationSpeed = {
+                x: (Math.random() - 0.5) * 0.02,
+                y: (Math.random() - 0.5) * 0.02
+            };
+            
+            scene.add(cube);
+            cubes.push(cube);
+        }
+        
+        // Initial cubes
+        for (let i = 0; i < 8; i++) {
+            createCube();
+        }
+
+        camera.position.z = 15;
+
+        // Mouse interaction and shooting
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+
+        function onMouseMove(event) {
+            const rect = gameContainer.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        }
+
+        function createProjectile(direction) {
+            const geometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.9
+            });
+            const projectile = new THREE.Mesh(geometry, material);
+            
+            projectile.position.copy(camera.position);
+            projectile.velocity = direction.multiplyScalar(0.5);
+            projectile.life = 100; // frames to live
+            
+            scene.add(projectile);
+            projectiles.push(projectile);
+        }
+
+        function onMouseClick(event) {
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Create projectile in the direction of the mouse
+            const direction = new THREE.Vector3();
+            raycaster.ray.direction.normalize();
+            direction.copy(raycaster.ray.direction);
+            
+            createProjectile(direction);
+        }
+
+        // Collision detection
+        function checkCollisions() {
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const projectile = projectiles[i];
+                
+                for (let j = cubes.length - 1; j >= 0; j--) {
+                    const cube = cubes[j];
+                    const distance = projectile.position.distanceTo(cube.position);
+                    
+                    if (distance < 1) { // Hit!
+                        // Remove projectile
+                        scene.remove(projectile);
+                        projectiles.splice(i, 1);
+                        
+                        // Animate cube exploding
+                        const explodeCube = (cube) => {
+                            cube.scale.multiplyScalar(1.1);
+                            cube.rotation.x += 0.2;
+                            cube.rotation.y += 0.2;
+                            cube.material.opacity -= 0.05;
+                            
+                            if (cube.material.opacity > 0) {
+                                requestAnimationFrame(() => explodeCube(cube));
+                            } else {
+                                scene.remove(cube);
+                                const cubeIndex = cubes.indexOf(cube);
+                                if (cubeIndex > -1) cubes.splice(cubeIndex, 1);
+                                
+                                // Add new cube after delay
+                                setTimeout(createCube, 1000);
+                            }
+                        };
+                        explodeCube(cube);
+                        
+                        score++;
+                        break;
+                    }
+                }
+            }
+        }
+
+        gameContainer.addEventListener('mousemove', onMouseMove);
+        gameContainer.addEventListener('click', onMouseClick);
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update cubes
+            for (let i = cubes.length - 1; i >= 0; i--) {
+                const cube = cubes[i];
+                
+                // Move cube
+                cube.position.add(cube.velocity);
+                
+                // Rotate cube
+                cube.rotation.x += cube.rotationSpeed.x;
+                cube.rotation.y += cube.rotationSpeed.y;
+                
+                // Remove cubes that are too far away
+                if (Math.abs(cube.position.x) > 20 || Math.abs(cube.position.y) > 12 || cube.position.z > 20) {
+                    scene.remove(cube);
+                    cubes.splice(i, 1);
+                    
+                    // Add new cube
+                    setTimeout(createCube, Math.random() * 2000);
+                }
+            }
+            
+            // Update projectiles
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const projectile = projectiles[i];
+                
+                // Move projectile
+                projectile.position.add(projectile.velocity);
+                
+                // Remove old projectiles
+                projectile.life--;
+                if (projectile.life <= 0) {
+                    scene.remove(projectile);
+                    projectiles.splice(i, 1);
+                }
+            }
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Ensure minimum number of cubes
+            while (cubes.length < 5) {
+                createCube();
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', resizeCanvas);
+
+        animate();
+    </script>
+</body>
+</html>
