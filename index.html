@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
     <title>Website in onderhoud</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -312,14 +314,34 @@
         let renderer;
         let gameInitialized = false;
         
+        // Game objects
+        let cubes = [];
+        let projectiles = [];
+        const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xffa726, 0x66bb6a, 0xab47bc];
+        let score = 0;
+        
+        // Mouse and raycaster for interaction
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+        
         function initializeGame() {
             if (gameInitialized) return;
+            
+            // Check if Three.js is loaded
+            if (typeof THREE === 'undefined') {
+                console.error('THREE.js not loaded yet');
+                setTimeout(initializeGame, 100);
+                return;
+            }
             
             // Get game container dimensions
             gameContainer = document.querySelector('.game-container');
             canvas = document.getElementById('canvas');
             
-            if (!gameContainer || !canvas) return;
+            if (!gameContainer || !canvas) {
+                console.error('Game container or canvas not found');
+                return;
+            }
             
             // Three.js setup
             scene = new THREE.Scene();
@@ -333,6 +355,9 @@
             initializeGameObjects();
             
             gameInitialized = true;
+            
+            // Log for debugging
+            console.log('Game initialized successfully');
         }
         
         function resizeCanvas() {
@@ -343,29 +368,28 @@
             camera.updateProjectionMatrix();
         }
 
-        // Game objects
-        let cubes = [];
-        let projectiles = [];
-        const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xffa726, 0x66bb6a, 0xab47bc];
-        let score = 0;
-        
         function initializeGameObjects() {
-            // Initial cubes
+            // Reset game state
             cubes = [];
             projectiles = [];
             score = 0;
             
+            // Create initial cubes
             for (let i = 0; i < 8; i++) {
                 createCube();
             }
 
+            // Position camera
             camera.position.z = 15;
             
             // Add event listeners
-            gameContainer.addEventListener('mousemove', onMouseMove);
-            gameContainer.addEventListener('click', onMouseClick);
-            gameContainer.addEventListener('touchmove', onTouchMove, { passive: false });
-            gameContainer.addEventListener('touchend', onTouchEnd, { passive: false });
+            if (gameContainer) {
+                gameContainer.addEventListener('mousemove', onMouseMove);
+                gameContainer.addEventListener('click', onMouseClick);
+                gameContainer.addEventListener('touchmove', onTouchMove, { passive: false });
+                gameContainer.addEventListener('touchend', onTouchEnd, { passive: false });
+                console.log('Game event listeners attached');
+            }
         }
         
         // Create moving cubes
@@ -421,10 +445,6 @@
         
         // Game will be initialized when switching to game tab
 
-        // Mouse interaction and shooting
-        const mouse = new THREE.Vector2();
-        const raycaster = new THREE.Raycaster();
-
         function onMouseMove(event) {
             const rect = gameContainer.getBoundingClientRect();
             mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -457,6 +477,20 @@
             direction.copy(raycaster.ray.direction);
             
             createProjectile(direction);
+            
+            // Test vibration on first user interaction (if permission was granted)
+            testVibrationOnInteraction();
+        }
+        
+        function testVibrationOnInteraction() {
+            if (window.deviceInfoVibrationAllowed && !window.vibrationTested && 'vibrate' in navigator) {
+                try {
+                    navigator.vibrate([50, 30, 50]); // Quick test vibration
+                    window.vibrationTested = true;
+                } catch (e) {
+                    console.log('Vibration not available:', e.message);
+                }
+            }
         }
 
         // Collision detection
@@ -520,6 +554,9 @@
                 direction.copy(raycaster.ray.direction);
                 createProjectile(direction);
                 event.preventDefault(); // Prevent mouse events from firing
+                
+                // Test vibration on first user interaction (if permission was granted)
+                testVibrationOnInteraction();
             }
         }
 
@@ -624,7 +661,9 @@
             
             // Initialize game if switching to game tab
             if (tabName === 'game') {
+                console.log('Switching to game tab...');
                 setTimeout(() => {
+                    console.log('Initializing game...');
                     initializeGame();
                     resizeCanvas();
                 }, 100);
@@ -961,16 +1000,8 @@ ${sData.mediaDevices.length > 0 ? sData.mediaDevices.map(device =>
             displayDeviceInfo(deviceInfo);
             document.getElementById('permissionDialog').style.display = 'none';
             
-            // Test vibration if available (only after user interaction)
-            if ('vibrate' in navigator && window.location.protocol !== 'file:') {
-                setTimeout(() => {
-                    try {
-                        navigator.vibrate([100, 50, 100]); // Quick test vibration
-                    } catch (e) {
-                        console.log('Vibration not available:', e.message);
-                    }
-                }, 1000);
-            }
+            // Store that user has given permission for vibration test
+            window.deviceInfoVibrationAllowed = true;
             
             // Store preference
             localStorage.setItem('deviceInfoAllowed', 'true');
@@ -996,6 +1027,7 @@ ${sData.mediaDevices.length > 0 ? sData.mediaDevices.map(device =>
         // Initialize permission check
         checkPermission();
 
+        // Start the animation loop (but game logic only runs when initialized)
         animate();
     </script>
 </body>
