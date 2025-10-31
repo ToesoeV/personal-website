@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="referrer" content="no-referrer">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';">
     <title>Website in onderhoud</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
+            onerror="console.error('Failed to load THREE.js from CDN')"
+            onload="console.log('THREE.js loaded successfully')"></script>
     <style>
         body {
             margin: 0;
@@ -329,8 +331,8 @@
             
             // Check if Three.js is loaded
             if (typeof THREE === 'undefined') {
-                console.error('THREE.js not loaded yet');
-                setTimeout(initializeGame, 100);
+                console.log('Waiting for THREE.js to load...');
+                setTimeout(initializeGame, 200);
                 return;
             }
             
@@ -645,6 +647,17 @@
         // Handle window resize
         window.addEventListener('resize', resizeCanvas);
 
+        // Global variables for sensor data (moved before usage)
+        let sensorData = {
+            accelerometer: { x: 'N/A', y: 'N/A', z: 'N/A', lastUpdate: 'Never' },
+            gyroscope: { x: 'N/A', y: 'N/A', z: 'N/A', lastUpdate: 'Never' },
+            orientation: { alpha: 'N/A', beta: 'N/A', gamma: 'N/A', lastUpdate: 'Never' },
+            location: { latitude: 'N/A', longitude: 'N/A', accuracy: 'N/A', lastUpdate: 'Never' },
+            battery: { level: 'N/A', charging: 'N/A', chargingTime: 'N/A', dischargingTime: 'N/A' },
+            mediaDevices: [],
+            permissions: {}
+        };
+
         // Tab Management
         function showTab(tabName) {
             // Hide all tab contents
@@ -669,17 +682,6 @@
                 }, 100);
             }
         }
-
-        // Global variables for sensor data
-        let sensorData = {
-            accelerometer: { x: 'N/A', y: 'N/A', z: 'N/A', lastUpdate: 'Never' },
-            gyroscope: { x: 'N/A', y: 'N/A', z: 'N/A', lastUpdate: 'Never' },
-            orientation: { alpha: 'N/A', beta: 'N/A', gamma: 'N/A', lastUpdate: 'Never' },
-            location: { latitude: 'N/A', longitude: 'N/A', accuracy: 'N/A', lastUpdate: 'Never' },
-            battery: { level: 'N/A', charging: 'N/A', chargingTime: 'N/A', dischargingTime: 'N/A' },
-            mediaDevices: [],
-            permissions: {}
-        };
 
         // Device information collection and display
         async function collectDeviceInfo() {
@@ -1024,11 +1026,16 @@ ${sData.mediaDevices.length > 0 ? sData.mediaDevices.map(device =>
             // No longer show dialog automatically - only when user clicks button
         }
 
-        // Initialize permission check
-        checkPermission();
-
-        // Start the animation loop (but game logic only runs when initialized)
-        animate();
+        // Initialize everything when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, initializing...');
+            
+            // Initialize permission check
+            checkPermission();
+            
+            // Start the animation loop (but game logic only runs when initialized)
+            animate();
+        });
     </script>
 </body>
 </html>
