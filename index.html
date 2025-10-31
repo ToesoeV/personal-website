@@ -145,24 +145,33 @@
             });
             const cube = new THREE.Mesh(geometry, material);
             
+            // Adjust speed based on screen width (slower on mobile)
+            const screenWidth = window.innerWidth;
+            let speedMultiplier = 1.0;
+            if (screenWidth <= 480) {
+                speedMultiplier = 0.4; // Very slow on small phones
+            } else if (screenWidth <= 768) {
+                speedMultiplier = 0.6; // Moderate speed on tablets
+            }
+            
             // Start position (random edge of screen)
             const side = Math.floor(Math.random() * 4);
             switch(side) {
                 case 0: // Left
                     cube.position.set(-15, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
-                    cube.velocity = new THREE.Vector3(0.1, (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05);
+                    cube.velocity = new THREE.Vector3(0.1 * speedMultiplier, (Math.random() - 0.5) * 0.05 * speedMultiplier, (Math.random() - 0.5) * 0.05 * speedMultiplier);
                     break;
                 case 1: // Right
                     cube.position.set(15, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
-                    cube.velocity = new THREE.Vector3(-0.1, (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05);
+                    cube.velocity = new THREE.Vector3(-0.1 * speedMultiplier, (Math.random() - 0.5) * 0.05 * speedMultiplier, (Math.random() - 0.5) * 0.05 * speedMultiplier);
                     break;
                 case 2: // Top
                     cube.position.set((Math.random() - 0.5) * 20, 8, (Math.random() - 0.5) * 10);
-                    cube.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.05, -0.1, (Math.random() - 0.5) * 0.05);
+                    cube.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.05 * speedMultiplier, -0.1 * speedMultiplier, (Math.random() - 0.5) * 0.05 * speedMultiplier);
                     break;
                 case 3: // Bottom
                     cube.position.set((Math.random() - 0.5) * 20, -8, (Math.random() - 0.5) * 10);
-                    cube.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.05, 0.1, (Math.random() - 0.5) * 0.05);
+                    cube.velocity = new THREE.Vector3((Math.random() - 0.5) * 0.05 * speedMultiplier, 0.1 * speedMultiplier, (Math.random() - 0.5) * 0.05 * speedMultiplier);
                     break;
             }
             
