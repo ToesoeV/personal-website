@@ -1,2 +1,2 @@
 # personal-website
-Persoonlijke website
+Persoonlijke website met tijdverdrijfspelletje
