@@ -259,10 +259,14 @@
                 <h1>🚧 Website in Onderhoud 🚧</h1>
                 <p>We werken hard aan vernieuwingen!</p>
                 <div class="instructions">
-                    <p><strong>Welkom bij Matthijs' website!</strong></p>
-                    <p>De site is momenteel in onderhoud terwijl we nieuwe features toevoegen.</p>
-                    <p>Bekijk ondertussen het <strong>Spelletje</strong> tab of de <strong>Apparaat Info</strong> voor technische details!</p>
-                    <p>Je kunt ook de <strong>Tijdverschil</strong> tool bekijken voor wereldwijde tijdzones.</p>
+                    <p><strong>Welkom bij Matthijs Verburg's website!</strong></p>
+                    <p>De site is momenteel in onderhoud terwijl we nieuwe features en verbeteringen toevoegen.</p>
+                    <br>
+                    <p>🎮 <strong>Spelletje:</strong> Probeer het kubus-schieten spel!</p>
+                    <p>📱 <strong>Apparaat Info:</strong> Bekijk uitgebreide technische details van je apparaat</p>
+                    <p>🌍 <strong>Tijdverschil:</strong> Ontdek tijdzones wereldwijd</p>
+                    <br>
+                    <p>Bedankt voor je geduld terwijl we werken aan een betere ervaring.</p>
                 </div>
             </div>
         </div>
@@ -300,30 +304,69 @@
     </div>
 
     <script>
-        // Get game container dimensions
-        const gameContainer = document.querySelector('.game-container');
-        const canvas = document.getElementById('canvas');
+        // Game initialization variables
+        let gameContainer;
+        let canvas;
+        let scene;
+        let camera;
+        let renderer;
+        let gameInitialized = false;
         
-        // Three.js setup
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, gameContainer.offsetWidth / gameContainer.offsetHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+        function initializeGame() {
+            if (gameInitialized) return;
+            
+            // Get game container dimensions
+            gameContainer = document.querySelector('.game-container');
+            canvas = document.getElementById('canvas');
+            
+            if (!gameContainer || !canvas) return;
+            
+            // Three.js setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, gameContainer.offsetWidth / gameContainer.offsetHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
+            
+            resizeCanvas();
+            renderer.setClearColor(0x000000, 0.1);
+            
+            // Initialize game objects
+            initializeGameObjects();
+            
+            gameInitialized = true;
+        }
         
         function resizeCanvas() {
+            if (!gameContainer || !renderer) return;
             const rect = gameContainer.getBoundingClientRect();
             renderer.setSize(rect.width, rect.height);
             camera.aspect = rect.width / rect.height;
             camera.updateProjectionMatrix();
         }
-        
-        resizeCanvas();
-        renderer.setClearColor(0x000000, 0.1);
 
         // Game objects
-        const cubes = [];
-        const projectiles = [];
+        let cubes = [];
+        let projectiles = [];
         const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xffa726, 0x66bb6a, 0xab47bc];
         let score = 0;
+        
+        function initializeGameObjects() {
+            // Initial cubes
+            cubes = [];
+            projectiles = [];
+            score = 0;
+            
+            for (let i = 0; i < 8; i++) {
+                createCube();
+            }
+
+            camera.position.z = 15;
+            
+            // Add event listeners
+            gameContainer.addEventListener('mousemove', onMouseMove);
+            gameContainer.addEventListener('click', onMouseClick);
+            gameContainer.addEventListener('touchmove', onTouchMove, { passive: false });
+            gameContainer.addEventListener('touchend', onTouchEnd, { passive: false });
+        }
         
         // Create moving cubes
         function createCube() {
@@ -376,12 +419,7 @@
             cubes.push(cube);
         }
         
-        // Initial cubes
-        for (let i = 0; i < 8; i++) {
-            createCube();
-        }
-
-        camera.position.z = 15;
+        // Game will be initialized when switching to game tab
 
         // Mouse interaction and shooting
         const mouse = new THREE.Vector2();
@@ -462,9 +500,6 @@
             }
         }
 
-        gameContainer.addEventListener('mousemove', onMouseMove);
-        gameContainer.addEventListener('click', onMouseClick);
-
         // Touch support for mobile shooting
         function onTouchMove(event) {
             if (event.touches.length === 1) {
@@ -487,10 +522,6 @@
                 event.preventDefault(); // Prevent mouse events from firing
             }
         }
-
-        // Add touch event listeners to game container
-        gameContainer.addEventListener('touchmove', onTouchMove, { passive: false });
-        gameContainer.addEventListener('touchend', onTouchEnd, { passive: false });
 
         // Disable zoom on document level (outside game area)
         (function() {
@@ -523,6 +554,9 @@
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
+            
+            // Only run game logic if game is initialized and active
+            if (!gameInitialized || !renderer || !scene) return;
             
             // Update cubes
             for (let i = cubes.length - 1; i >= 0; i--) {
@@ -588,9 +622,12 @@
             document.getElementById(tabName + '-content').classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
             
-            // Resize canvas if switching to game tab
+            // Initialize game if switching to game tab
             if (tabName === 'game') {
-                setTimeout(resizeCanvas, 100);
+                setTimeout(() => {
+                    initializeGame();
+                    resizeCanvas();
+                }, 100);
             }
         }
 
@@ -628,7 +665,7 @@
                 platform: navigator.platform,
                 language: navigator.language,
                 languages: navigator.languages ? navigator.languages.join(', ') : 'N/A',
-                cookieEnabled: navigator.cookieEnabled,
+                cookieEnabled: window.location.protocol === 'file:' ? 'N/A (file://)' : navigator.cookieEnabled,
                 onLine: navigator.onLine,
                 vendor: navigator.vendor || 'N/A',
                 product: navigator.product || 'N/A',
@@ -837,7 +874,7 @@
    Platform: ${deviceInfo.platform} | Vendor: ${deviceInfo.vendor}
    Product: ${deviceInfo.product}
    Taal: ${deviceInfo.language} | Alle Talen: ${deviceInfo.languages}
-   Online: ${deviceInfo.onLine ? '🟢' : '🔴'} | Cookies: ${deviceInfo.cookieEnabled ? '✅' : '❌'}
+   Online: ${deviceInfo.onLine ? '🟢' : '🔴'} | Cookies: ${typeof deviceInfo.cookieEnabled === 'string' ? deviceInfo.cookieEnabled : (deviceInfo.cookieEnabled ? '✅' : '❌')}
 
 ⚙️  HARDWARE & PRESTATIES:
    CPU Kernen: ${deviceInfo.hardwareConcurrency} | RAM: ${deviceInfo.deviceMemory}
@@ -924,10 +961,14 @@ ${sData.mediaDevices.length > 0 ? sData.mediaDevices.map(device =>
             displayDeviceInfo(deviceInfo);
             document.getElementById('permissionDialog').style.display = 'none';
             
-            // Test vibration if available
-            if (navigator.vibrate) {
+            // Test vibration if available (only after user interaction)
+            if ('vibrate' in navigator && window.location.protocol !== 'file:') {
                 setTimeout(() => {
-                    navigator.vibrate([100, 50, 100]); // Quick test vibration
+                    try {
+                        navigator.vibrate([100, 50, 100]); // Quick test vibration
+                    } catch (e) {
+                        console.log('Vibration not available:', e.message);
+                    }
                 }, 1000);
             }
             
