@@ -91,9 +91,70 @@
             background: white;
             border-radius: 50%;
         }
+        .device-info {
+            background: rgba(0,0,0,0.8);
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            padding: 10px;
+            border-bottom: 2px solid rgba(0,255,0,0.3);
+            display: none;
+            white-space: pre-wrap;
+            line-height: 1.2;
+        }
+        .permission-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(15px);
+            border: 2px solid rgba(255,255,255,0.2);
+            text-align: center;
+            z-index: 1000;
+            max-width: 400px;
+            display: none;
+        }
+        .permission-dialog h3 {
+            margin-top: 0;
+            color: #4ecdc4;
+        }
+        .permission-dialog button {
+            margin: 10px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        .btn-allow {
+            background: #4ecdc4;
+            color: white;
+        }
+        .btn-deny {
+            background: #ff6b6b;
+            color: white;
+        }
     </style>
 </head>
 <body>
+    <div class="device-info" id="deviceInfo"></div>
+    
+    <div class="permission-dialog" id="permissionDialog">
+        <h3>🔍 Uitgebreide Apparaat Analyse</h3>
+        <p>Mogen we uitgebreide technische informatie over je apparaat verzamelen en tonen?</p>
+        <p style="font-size: 0.85em; color: #ccc;">
+            Dit omvat: schermdata, sensoren (accelerometer, gyroscoop), locatie, audio/video apparaten, 
+            batterijstatus, netwerk info, en alle beschikbare apparaat capabilities.
+        </p>
+        <p style="font-size: 0.8em; color: #ffaa00;">⚠️ Je browser kan om extra toestemmingen vragen voor sensoren/locatie</p>
+        <button class="btn-allow" onclick="allowDeviceInfo()">🚀 Ja, toon alles!</button>
+        <button class="btn-deny" onclick="denyDeviceInfo()">❌ Nee, bedankt</button>
+    </div>
+
     <div class="header">
         <h1>🚧 Website in Onderhoud 🚧</h1>
         <p>We werken hard aan vernieuwingen!</p>
@@ -383,6 +444,362 @@
 
         // Handle window resize
         window.addEventListener('resize', resizeCanvas);
+
+        // Global variables for sensor data
+        let sensorData = {
+            accelerometer: { x: 'N/A', y: 'N/A', z: 'N/A', lastUpdate: 'Never' },
+            gyroscope: { x: 'N/A', y: 'N/A', z: 'N/A', lastUpdate: 'Never' },
+            orientation: { alpha: 'N/A', beta: 'N/A', gamma: 'N/A', lastUpdate: 'Never' },
+            location: { latitude: 'N/A', longitude: 'N/A', accuracy: 'N/A', lastUpdate: 'Never' },
+            battery: { level: 'N/A', charging: 'N/A', chargingTime: 'N/A', dischargingTime: 'N/A' },
+            mediaDevices: [],
+            permissions: {}
+        };
+
+        // Device information collection and display
+        async function collectDeviceInfo() {
+            const info = {
+                // Screen and Display
+                screenWidth: screen.width,
+                screenHeight: screen.height,
+                screenAvailWidth: screen.availWidth,
+                screenAvailHeight: screen.availHeight,
+                screenColorDepth: screen.colorDepth,
+                screenPixelDepth: screen.pixelDepth,
+                
+                // Window/Viewport
+                windowWidth: window.innerWidth,
+                windowHeight: window.innerHeight,
+                windowOuterWidth: window.outerWidth,
+                windowOuterHeight: window.outerHeight,
+                devicePixelRatio: window.devicePixelRatio,
+                
+                // Browser and OS
+                userAgent: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                languages: navigator.languages ? navigator.languages.join(', ') : 'N/A',
+                cookieEnabled: navigator.cookieEnabled,
+                onLine: navigator.onLine,
+                vendor: navigator.vendor || 'N/A',
+                product: navigator.product || 'N/A',
+                appName: navigator.appName || 'N/A',
+                appVersion: navigator.appVersion || 'N/A',
+                
+                // Hardware
+                hardwareConcurrency: navigator.hardwareConcurrency || 'N/A',
+                maxTouchPoints: navigator.maxTouchPoints || 'N/A',
+                deviceMemory: navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'N/A',
+                
+                // Time and Location
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timestamp: new Date().toISOString(),
+                
+                // Network Connection
+                connectionType: navigator.connection ? navigator.connection.effectiveType : 'N/A',
+                connectionDownlink: navigator.connection ? navigator.connection.downlink + ' Mbps' : 'N/A',
+                connectionRtt: navigator.connection ? navigator.connection.rtt + ' ms' : 'N/A',
+                connectionSaveData: navigator.connection ? navigator.connection.saveData : 'N/A',
+                
+                // Orientation
+                orientation: screen.orientation ? screen.orientation.type : 'N/A',
+                orientationAngle: screen.orientation ? screen.orientation.angle + '°' : 'N/A',
+                
+                // WebGL and Graphics
+                webglSupport: 'N/A',
+                webglRenderer: 'N/A',
+                webglVendor: 'N/A',
+                
+                // Audio Context
+                audioContextSupport: 'N/A',
+                audioMaxChannels: 'N/A',
+                audioSampleRate: 'N/A',
+                
+                // Permissions API
+                permissionsSupport: 'permissions' in navigator,
+                
+                // Storage
+                localStorage: 'localStorage' in window,
+                sessionStorage: 'sessionStorage' in window,
+                indexedDB: 'indexedDB' in window,
+                
+                // Advanced APIs
+                serviceWorker: 'serviceWorker' in navigator,
+                geolocation: 'geolocation' in navigator,
+                vibration: 'vibrate' in navigator,
+                clipboard: 'clipboard' in navigator,
+                share: 'share' in navigator,
+                
+                // Sensor data (live updating)
+                sensorData: sensorData
+            };
+            
+            // Get WebGL info
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl) {
+                    info.webglSupport = 'Supported';
+                    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        info.webglRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                        info.webglVendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                    }
+                }
+            } catch (e) {
+                info.webglSupport = 'Error: ' + e.message;
+            }
+            
+            // Get Audio Context info
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) {
+                    const audioCtx = new AudioContext();
+                    info.audioContextSupport = 'Supported';
+                    info.audioMaxChannels = audioCtx.destination.maxChannelCount || 'N/A';
+                    info.audioSampleRate = audioCtx.sampleRate + ' Hz' || 'N/A';
+                    audioCtx.close();
+                }
+            } catch (e) {
+                info.audioContextSupport = 'Error: ' + e.message;
+            }
+            
+            // Get Media Devices
+            if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    sensorData.mediaDevices = devices.map(device => ({
+                        kind: device.kind,
+                        label: device.label || 'Unknown Device',
+                        deviceId: device.deviceId.substring(0, 20) + '...'
+                    }));
+                } catch (e) {
+                    sensorData.mediaDevices = ['Error: ' + e.message];
+                }
+            }
+            
+            // Get Battery Status
+            if ('getBattery' in navigator) {
+                try {
+                    const battery = await navigator.getBattery();
+                    sensorData.battery = {
+                        level: Math.round(battery.level * 100) + '%',
+                        charging: battery.charging ? '🔌 Charging' : '🔋 Not Charging',
+                        chargingTime: battery.chargingTime === Infinity ? 'N/A' : Math.round(battery.chargingTime / 60) + ' min',
+                        dischargingTime: battery.dischargingTime === Infinity ? 'N/A' : Math.round(battery.dischargingTime / 60) + ' min'
+                    };
+                } catch (e) {
+                    sensorData.battery = { error: e.message };
+                }
+            }
+            
+            return info;
+        }
+        
+        // Initialize sensor listeners
+        function initializeSensors() {
+            // Motion sensors
+            if (window.DeviceMotionEvent) {
+                window.addEventListener('devicemotion', function(event) {
+                    if (event.acceleration) {
+                        sensorData.accelerometer = {
+                            x: event.acceleration.x ? event.acceleration.x.toFixed(3) : 'N/A',
+                            y: event.acceleration.y ? event.acceleration.y.toFixed(3) : 'N/A',
+                            z: event.acceleration.z ? event.acceleration.z.toFixed(3) : 'N/A',
+                            lastUpdate: new Date().toLocaleTimeString('nl-NL')
+                        };
+                    }
+                    if (event.rotationRate) {
+                        sensorData.gyroscope = {
+                            x: event.rotationRate.alpha ? event.rotationRate.alpha.toFixed(3) : 'N/A',
+                            y: event.rotationRate.beta ? event.rotationRate.beta.toFixed(3) : 'N/A',
+                            z: event.rotationRate.gamma ? event.rotationRate.gamma.toFixed(3) : 'N/A',
+                            lastUpdate: new Date().toLocaleTimeString('nl-NL')
+                        };
+                    }
+                });
+            }
+            
+            // Orientation sensor
+            if (window.DeviceOrientationEvent) {
+                window.addEventListener('deviceorientation', function(event) {
+                    sensorData.orientation = {
+                        alpha: event.alpha ? event.alpha.toFixed(1) + '°' : 'N/A',
+                        beta: event.beta ? event.beta.toFixed(1) + '°' : 'N/A',
+                        gamma: event.gamma ? event.gamma.toFixed(1) + '°' : 'N/A',
+                        lastUpdate: new Date().toLocaleTimeString('nl-NL')
+                    };
+                });
+            }
+            
+            // Request motion sensor permissions on iOS 13+
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission().catch(console.error);
+            }
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission().catch(console.error);
+            }
+        }
+        
+        // Get geolocation
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        sensorData.location = {
+                            latitude: position.coords.latitude.toFixed(6),
+                            longitude: position.coords.longitude.toFixed(6),
+                            accuracy: position.coords.accuracy.toFixed(0) + 'm',
+                            altitude: position.coords.altitude ? position.coords.altitude.toFixed(1) + 'm' : 'N/A',
+                            speed: position.coords.speed ? position.coords.speed.toFixed(1) + 'm/s' : 'N/A',
+                            lastUpdate: new Date().toLocaleTimeString('nl-NL')
+                        };
+                    },
+                    function(error) {
+                        sensorData.location = {
+                            error: error.message,
+                            lastUpdate: new Date().toLocaleTimeString('nl-NL')
+                        };
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                );
+            }
+        }
+
+        function displayDeviceInfo(deviceInfo) {
+            const deviceInfoEl = document.getElementById('deviceInfo');
+            const sData = deviceInfo.sensorData;
+            
+            const formatInfo = `
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+� UITGEBREIDE APPARAAT ANALYSE                                      � ${new Date().toLocaleString('nl-NL')}
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+📐 SCHERM & DISPLAY:
+   Schermresolutie: ${deviceInfo.screenWidth} × ${deviceInfo.screenHeight} pixels
+   Beschikbaar Scherm: ${deviceInfo.screenAvailWidth} × ${deviceInfo.screenAvailHeight} pixels
+   Browser Venster: ${deviceInfo.windowWidth} × ${deviceInfo.windowHeight} pixels
+   Outer Venster: ${deviceInfo.windowOuterWidth} × ${deviceInfo.windowOuterHeight} pixels
+   Pixel Ratio: ${deviceInfo.devicePixelRatio}x (${deviceInfo.screenColorDepth}-bit kleuren)
+   Oriëntatie: ${deviceInfo.orientation} (${deviceInfo.orientationAngle})
+
+🌐 BROWSER & SYSTEEM:
+   Browser: ${deviceInfo.appName} v${deviceInfo.appVersion}
+   Platform: ${deviceInfo.platform} | Vendor: ${deviceInfo.vendor}
+   Product: ${deviceInfo.product}
+   Taal: ${deviceInfo.language} | Alle Talen: ${deviceInfo.languages}
+   Online: ${deviceInfo.onLine ? '🟢' : '🔴'} | Cookies: ${deviceInfo.cookieEnabled ? '✅' : '❌'}
+
+⚙️  HARDWARE & PRESTATIES:
+   CPU Kernen: ${deviceInfo.hardwareConcurrency} | RAM: ${deviceInfo.deviceMemory}
+   Touch Points: ${deviceInfo.maxTouchPoints}
+   WebGL: ${deviceInfo.webglSupport}
+   GPU Renderer: ${deviceInfo.webglRenderer}
+   GPU Vendor: ${deviceInfo.webglVendor}
+
+🔊 AUDIO SYSTEEM:
+   Audio Context: ${deviceInfo.audioContextSupport}
+   Max Kanalen: ${deviceInfo.audioMaxChannels} | Sample Rate: ${deviceInfo.audioSampleRate}
+
+📡 NETWERK & VERBINDING:
+   Type: ${deviceInfo.connectionType} | Snelheid: ${deviceInfo.connectionDownlink}
+   Latency (RTT): ${deviceInfo.connectionRtt} | Data Besparing: ${deviceInfo.connectionSaveData}
+   Tijdzone: ${deviceInfo.timezone}
+
+🔋 BATTERIJ STATUS:
+   Niveau: ${sData.battery.level} | Status: ${sData.battery.charging}
+   Oplaadtijd: ${sData.battery.chargingTime} | Ontlaadtijd: ${sData.battery.dischargingTime}
+
+📍 LOCATIE DATA:
+   Coördinaten: ${sData.location.latitude}, ${sData.location.longitude}
+   Nauwkeurigheid: ${sData.location.accuracy} | Hoogte: ${sData.location.altitude || 'N/A'}
+   Snelheid: ${sData.location.speed || 'N/A'} | Update: ${sData.location.lastUpdate}
+
+🎯 BEWEGINGSSENSOREN:
+   Accelerometer (m/s²): X:${sData.accelerometer.x} Y:${sData.accelerometer.y} Z:${sData.accelerometer.z}
+   Update: ${sData.accelerometer.lastUpdate}
+   
+   Gyroscoop (rad/s): X:${sData.gyroscope.x} Y:${sData.gyroscope.y} Z:${sData.gyroscope.z}
+   Update: ${sData.gyroscope.lastUpdate}
+   
+   Oriëntatie: α:${sData.orientation.alpha} β:${sData.orientation.beta} γ:${sData.orientation.gamma}
+   Update: ${sData.orientation.lastUpdate}
+
+🎥 MEDIA APPARATEN:
+${sData.mediaDevices.length > 0 ? sData.mediaDevices.map(device => 
+   `   ${device.kind === 'audioinput' ? '🎤' : device.kind === 'audiooutput' ? '🔊' : '📹'} ${device.label} (${device.deviceId})`).join('\n') : '   Geen apparaten gevonden of toegang geweigerd'}
+
+🛠️  API ONDERSTEUNING:
+   Service Worker: ${deviceInfo.serviceWorker ? '✅' : '❌'} | Geolocation: ${deviceInfo.geolocation ? '✅' : '❌'}
+   Vibration: ${deviceInfo.vibration ? '✅' : '❌'} | Clipboard: ${deviceInfo.clipboard ? '✅' : '❌'}
+   Share API: ${deviceInfo.share ? '✅' : '❌'} | Permissions API: ${deviceInfo.permissionsSupport ? '✅' : '❌'}
+   
+💾 OPSLAG SYSTEMEN:
+   LocalStorage: ${deviceInfo.localStorage ? '✅' : '❌'} | SessionStorage: ${deviceInfo.sessionStorage ? '✅' : '❌'}
+   IndexedDB: ${deviceInfo.indexedDB ? '✅' : '❌'}
+
+🔍 USER AGENT STRING:
+   ${deviceInfo.userAgent}
+
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+💡 LIVE DATA: Sensoren updaten automatisch | Laatst vernieuwd: ${new Date().toLocaleTimeString('nl-NL')}
+═══════════════════════════════════════════════════════════════════════════════════════════════════════════`;
+
+            deviceInfoEl.textContent = formatInfo;
+            deviceInfoEl.style.display = 'block';
+            
+            // Auto-refresh every 5 seconds to show live sensor data
+            if (!window.deviceInfoInterval) {
+                window.deviceInfoInterval = setInterval(() => {
+                    collectDeviceInfo().then(displayDeviceInfo);
+                }, 5000);
+            }
+        }
+
+        async function allowDeviceInfo() {
+            // Initialize all sensors and data collection
+            initializeSensors();
+            getLocation();
+            
+            // Collect and display initial device info
+            const deviceInfo = await collectDeviceInfo();
+            displayDeviceInfo(deviceInfo);
+            document.getElementById('permissionDialog').style.display = 'none';
+            
+            // Test vibration if available
+            if (navigator.vibrate) {
+                setTimeout(() => {
+                    navigator.vibrate([100, 50, 100]); // Quick test vibration
+                }, 1000);
+            }
+            
+            // Store preference
+            localStorage.setItem('deviceInfoAllowed', 'true');
+        }
+
+        function denyDeviceInfo() {
+            document.getElementById('permissionDialog').style.display = 'none';
+            localStorage.setItem('deviceInfoAllowed', 'false');
+        }
+
+        // Check if user has already given permission
+        async function checkPermission() {
+            const allowed = localStorage.getItem('deviceInfoAllowed');
+            if (allowed === 'true') {
+                await allowDeviceInfo();
+            } else if (allowed === 'false') {
+                // User already denied, don't show dialog
+                return;
+            } else {
+                // First time, show permission dialog
+                setTimeout(() => {
+                    document.getElementById('permissionDialog').style.display = 'block';
+                }, 2000); // Show after 2 seconds
+            }
+        }
+
+        // Initialize permission check
+        checkPermission();
 
         animate();
     </script>
